@@ -123,4 +123,80 @@ orderRoutes.put("/:id", async (req, res) => {
     }
 })
 
+orderRoutes.delete("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await Order.findById(id);
+
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        if (order.status !== "pending") {
+            return res.status(400).json({ error: "Only pending order can be deleted" });
+        }
+
+        await Order.findByIdAndDelete(id);
+        res.status(200).json({ message: "Order deleted succesfuly" });
+    }
+    catch (err) {
+        res.status(500).json({ "error": err.message });
+    }
+})
+
+orderRoutes.put("/:id/complete", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await Order.findById(id)
+            .populate("vehicle")
+            .populate("driver");
+
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        if (order.status !== "in_progress") {
+            return res.status(400).json({ error: "Only in-progress orders can be completed" });
+        }
+
+        order.status = "completed";
+        await order.save();
+
+        const vehicle = await Vehicle.findById(order.vehicle._id);
+        const driver = await Driver.findById(order.driver._id);
+
+        if (vehicle) {
+            vehicle.status = "available";
+            await vehicle.save();
+        }
+
+        if (driver) {
+            driver.availability = true;
+            await driver.save();
+        }
+
+        const pendingOrder = await Order.findOne({ status: "pending" }).sort({ createdAt: 1 });
+
+        if(pendingOrder && vehicle && driver) {
+            pendingOrder.vehicle = vehicle._id;
+            pendingOrder.driver = driver._id;
+            pendingOrder.status = "in_progress";
+            await pendingOrder.save();
+
+            vehicle.status = "in_service";
+            await vehicle.save();
+            driver.availability = false;
+            await driver.save();
+        }
+
+        res.status(200).json({
+            message: "Order completed successfuly",
+            completedORder: order
+        });
+    }
+    catch (err) {
+        res.status(500).json({ "error": err.message });
+    }
+})
+
 export default orderRoutes;
