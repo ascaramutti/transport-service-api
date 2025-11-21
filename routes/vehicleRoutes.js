@@ -1,5 +1,7 @@
 import express from "express";
 import { Vehicle } from "../models/vehicles.js";
+import { Order } from "../models/orders.js";
+import { Driver } from "../models/drivers.js";
 
 const vehiclesRoutes = express.Router();
 
@@ -31,6 +33,22 @@ vehiclesRoutes.post("/", async (req, res) => {
     try {
         const vehicle = new Vehicle(req.body);
         const saveDoc = await vehicle.save();
+
+        const pendingOrder = await Order.findOne({ status: "pending" }).sort({ createAt: 1 });
+        const availableDriver = await Driver.findOne({ availability: true });
+
+        if (pendingOrder && availableDriver) {
+            pendingOrder.vehicle = saveDoc._id;
+            pendingOrder.driver = availableDriver._id;
+            pendingOrder.status = "in_progress";
+            await pendingOrder.save();
+
+            vehicle.status = "in_service";
+            await vehicle.save();
+            availableDriver.availability = false;
+            await availableDriver.save();
+        }
+
         res.status(201).json(saveDoc);
     }
     catch (err) {
