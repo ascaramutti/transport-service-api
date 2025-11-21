@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const clientSchema = new mongoose.Schema({
-    name: {type: String, required: true},
+    name: { type: String, required: true },
     phone: String,
     createdAt: { type: Date, default: Date.now }
 });
