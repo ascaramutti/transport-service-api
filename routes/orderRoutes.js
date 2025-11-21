@@ -39,4 +39,52 @@ orderRoutes.post("/", async (req, res) => {
     }
 })
 
+orderRoutes.get("/", async (req, res) => {
+    try {
+        const orders = await Order.find()
+            .populate("client")
+            .populate("driver")
+            .populate("vehicle");
+
+        res.status(200).json(orders);
+    }
+    catch (err) {
+        res.status(500).json({ "error": err.message });
+    }
+})
+
+orderRoutes.get("/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const order = await Order.findById(id)
+            .populate("client")
+            .populate("driver")
+            .populate("vehicle");
+
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        res.status(200).json(order);
+    }
+    catch (err) {
+        res.status(500).json({ "error": err.message });
+    }
+})
+
+orderRoutes.get("/status/:status", async (req, res) => {
+    const { status } = req.params;
+    try {
+        const orders = await Order.find({ status: status })
+            .populate("client")
+            .populate("driver")
+            .populate("vehicle");
+
+        res.status(200).json(orders);
+    }
+    catch (err) {
+        res.status(500).json({ "error": err.message });
+    }
+})
+
 export default orderRoutes;
